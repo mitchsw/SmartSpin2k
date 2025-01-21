@@ -58,7 +58,6 @@ class SpinBLEServer {
   int spinDownFlag     = 0;
   NimBLEServer *pServer = nullptr;
   void setClientSubscribed(NimBLEUUID pUUID, bool subscribe);
-  void notifyShift();
   double calculateSpeed();
   void update();
   // Queue to store writes to any of the callbacks to the server
