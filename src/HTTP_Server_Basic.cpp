@@ -280,7 +280,6 @@ void HTTP_Server::start() {
       server.send(200, "text/plain", "OK");
       SS2K_LOG(HTTP_SERVER_LOG_TAG, "Shift From HTML");
     } else {
-      rtConfig->setShifterPosition(value);
       SS2K_LOG(HTTP_SERVER_LOG_TAG, "Invalid HTML Shift");
       server.send(200, "text/plain", "OK");
     }
