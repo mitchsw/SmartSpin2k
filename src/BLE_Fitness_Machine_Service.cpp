@@ -237,6 +237,7 @@ void BLE_Fitness_Machine_Service::processFTMSWrite() {
         } break;
 
         case FitnessMachineControlPointProcedure::SetIndoorBikeSimulationParameters: {  // sim mode
+          /*
           if (rtConfig->getFTMSMode() == FitnessMachineControlPointProcedure::SetTargetPower) {
             int targetSp = rtConfig->getTargetIncline() / userConfig->getShiftStep();
             // TODO: from code modularity POV, might be better implemented in SS2K::moveStepper() ?
@@ -244,6 +245,7 @@ void BLE_Fitness_Machine_Service::processFTMSWrite() {
             rtConfig->setShifterPosition(targetSp);
           }
           // IDEA: If we were just in ERG mode, take the current incline and set it to be the current shifter position. In other words, the transition is seamless
+          */
           rtConfig->setFTMSMode((uint8_t)rxValue[0]);
           returnValue[2] = FitnessMachineControlPointResultCode::Success;  // 0x01;
           pCharacteristic->setValue(returnValue, 3);

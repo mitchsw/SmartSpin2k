@@ -414,6 +414,11 @@ void SS2K::moveStepper() {
           rtConfig->setTargetIncline(stepper->getCurrentPosition() - 1);
         }
         ss2k->targetPosition = rtConfig->getTargetIncline();
+        // TESTING - Set shifter to closest value
+        int targetSp = rtConfig->getTargetIncline() / userConfig->getShiftStep();
+        rtConfig->setShifterPosition(targetSp);
+        ss2k->lastShifterPosition = targetSp;
+        // PROBLEM: Breaks ERG mode target watt shifting!
       } else if (rtConfig->getFTMSMode() == FitnessMachineControlPointProcedure::SetTargetResistanceLevel) {
         rtConfig->setTargetIncline(ss2k->currentPosition + ((rtConfig->resistance.getTarget() - rtConfig->resistance.getValue()) * 20));
         ss2k->targetPosition = rtConfig->getTargetIncline();
