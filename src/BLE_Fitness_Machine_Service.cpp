@@ -275,7 +275,10 @@ void BLE_Fitness_Machine_Service::processFTMSWrite() {
           ftmsTrainingStatus[1] = FitnessMachineTrainingStatus::Other;  // 0x00;
           pCharacteristic->setValue(returnValue, 3);
           pCharacteristic->indicate();
-          spinBLEServer.spinDownFlag = 2;
+
+          // SS2k doesn't actually support a Spin Down Calibration procedure like some smart trainers
+          // Instead, we'll respond to the request by calibrating the stepper motor to its min/max range
+          rtConfig->homing.setStatus(HomingStatus::HomingBothDirections);
         } break;
 
         case FitnessMachineControlPointProcedure::SetTargetedCadence: {

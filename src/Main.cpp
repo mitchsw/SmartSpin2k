@@ -110,7 +110,7 @@ void setup() {
 
   // if we have homing data, use that instead.
   if (userConfig->getHMax() != INT32_MIN && userConfig->getHMin() != INT32_MIN) {
-    spinBLEServer.spinDownFlag = 1;
+    rtConfig->homing.setStatus(HomingStatus::StartupHomingToZero);
   }
 
   // load PWC for HR to Pwr Calculation
@@ -196,7 +196,7 @@ void SS2K::maintenanceLoop(void *pvParameters) {
     // If we're in ERG mode, modify shift commands to inc/dec the target watts instead.
     ss2k->FTMSModeShiftModifier();
     // If we have a resistance bike attached, slow down when we're close to the limits.
-    if (ss2k->pelotonIsConnected && !rtConfig->getHomed() && !spinBLEServer.spinDownFlag) {
+    if (ss2k->pelotonIsConnected && !rtConfig->homing.isHomed() && !rtConfig->homing.isActive()) {
       int speed           = userConfig->getStepperSpeed();
       float resistance    = rtConfig->resistance.getValue();
       float maxResistance = rtConfig->getMaxResistance();
@@ -311,7 +311,7 @@ void SS2K::maintenanceLoop(void *pvParameters) {
 #endif  // UNIT_TEST
 
 void SS2K::FTMSModeShiftModifier() {
-  if (spinBLEServer.spinDownFlag) {
+  if (rtConfig->homing.isActive()) {
     return;
   }
   int shiftDelta = rtConfig->getShifterPosition() - ss2k->lastShifterPosition;
@@ -364,7 +364,7 @@ void SS2K::FTMSModeShiftModifier() {
             ((ss2k->targetPosition + shiftDelta * userConfig->getShiftStep()) > rtConfig->getMaxStep())) {
           SS2K_LOG(MAIN_LOG_TAG, "Shift Blocked by stepper limits.");
           rtConfig->setShifterPosition(ss2k->lastShifterPosition);
-        } else if (rtConfig->getHomed()) {
+        } else if (rtConfig->homing.isHomed()) {
           // was homed. Allow because previous test would have failed if out of bounds.
         } else if ((rtConfig->resistance.getValue() <= rtConfig->getMinResistance()) && (shiftDelta > 0)) {
           // User Shifted in the proper direction - allow
@@ -396,7 +396,7 @@ void SS2K::restartWifi() {
 }
 
 void SS2K::moveStepper() {
-  if (spinBLEServer.spinDownFlag) {
+  if (rtConfig->homing.isActive()) {
     return;
   }
   bool _stepperDir = userConfig->getStepperDir();
@@ -438,7 +438,7 @@ void SS2K::moveStepper() {
       ss2k->syncMode = false;
     }
 
-    if (ss2k->pelotonIsConnected && !rtConfig->getHomed()) {
+    if (ss2k->pelotonIsConnected && !rtConfig->homing.isHomed()) {
       if ((rtConfig->resistance.getValue() > rtConfig->getMinResistance()) && (rtConfig->resistance.getValue() < rtConfig->getMaxResistance())) {
         stepper->moveTo(ss2k->targetPosition);
       } else if (rtConfig->resistance.getValue() <= rtConfig->getMinResistance()) {  // Limit Stepper to Min Resistance
@@ -500,8 +500,10 @@ void IRAM_ATTR SS2K::shiftUp() {  // Handle the shift up interrupt IRAM_ATTR is 
   if (ss2k->deBounce()) {
     if (!digitalRead(currentBoard.shiftUpPin)) {  // double checking to make sure the interrupt wasn't triggered by emf
       rtConfig->setShifterPosition(rtConfig->getShifterPosition() - 1 + userConfig->getShifterDir() * 2);
-      // Stop homing initiation
-      spinBLEServer.spinDownFlag = 0;
+      // Stop homing initiation on shift press
+      if (rtConfig->homing.isActive()) {
+        rtConfig->homing.setStatus(HomingStatus::Unhomed);
+      }
     } else {
       ss2k->lastDebounceTime = 0;
     }  // Probably Triggered by EMF, reset the debounce
@@ -512,8 +514,10 @@ void IRAM_ATTR SS2K::shiftDown() {  // Handle the shift down interrupt
   if (ss2k->deBounce()) {
     if (!digitalRead(currentBoard.shiftDownPin)) {  // double checking to make sure the interrupt wasn't triggered by emf
       rtConfig->setShifterPosition(rtConfig->getShifterPosition() + 1 - userConfig->getShifterDir() * 2);
-      // Stop homing initiation
-      spinBLEServer.spinDownFlag = 0;
+      // Stop homing initiation on shift press
+      if (rtConfig->homing.isActive()) {
+        rtConfig->homing.setStatus(HomingStatus::Unhomed);
+      }
     } else {
       ss2k->lastDebounceTime = 0;
     }  // Probably Triggered by EMF, reset the debounce
@@ -568,7 +572,16 @@ void SS2K::setupTMCStepperDriver(bool reset) {
   this->setCurrentPosition(stepper->getCurrentPosition());
 }
 
-void SS2K::goHome(bool bothDirections) {
+void SS2K::doHoming() {
+  if (!rtConfig->homing.isActive()) {
+    return;
+  }
+  if (rtConfig->homing.getStatus() == HomingStatus::StartupHomingToZero && !rtConfig->cad.getValue()) {
+    // Don't do startup homing if nobody is on the bike (cadence = 0).
+    return;
+  }
+  bool bothDirections = (rtConfig->homing.getStatus() == HomingStatus::HomingBothDirections);
+
   if (stepper) {
     if (currentBoard.name != r2_NAME) {
       SS2K_LOG(MAIN_LOG_TAG, "Board Doesn't support homing");
@@ -610,10 +623,10 @@ void SS2K::goHome(bool bothDirections) {
     while (stepper->isRunning()) {
       vTaskDelay(10 / portTICK_PERIOD_MS);
     }
+    SS2K_LOG(MAIN_LOG_TAG, "Min Position found: 0. (Calibration changed by %d)", -stepper->getCurrentPosition());
     stepper->setCurrentPosition((int32_t)0);
     ss2k->setTargetPosition(0);
     rtConfig->setMinStep(0);
-    SS2K_LOG(MAIN_LOG_TAG, "Min Position found: %d.", rtConfig->getMinStep());
     stalled = false;
     fitnessMachineService.spinDown(0x02);
     if (bothDirections) {
@@ -651,7 +664,7 @@ void SS2K::goHome(bool bothDirections) {
   // In case this was only one direction homing.
   rtConfig->setMaxStep(userConfig->getHMax());
   userConfig->saveToLittleFS();
-  rtConfig->setHomed(true);
+  rtConfig->homing.setStatus(HomingStatus::Homed);
   this->setupTMCStepperDriver(true);
   ss2k->setTargetPosition(0);
 }

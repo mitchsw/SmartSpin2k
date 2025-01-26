@@ -53,13 +53,49 @@ class Measurement {
   }
 };
 
+class HomingStatus {
+ public:
+  enum Value : uint8_t {
+    Unhomed,
+    StartupHomingToZero,  // Start-up "homing to zero" is distinct because it requires >0 cadence to trigger
+    HomingToZero,
+    HomingBothDirections,
+    Homed
+  };
+
+  Value getStatus() { return status; }
+  void setStatus(Value s) { status = s; }
+
+  bool isHomed() {
+    return status == Homed;
+  }
+
+  // Returns true if we're actively homing
+  bool isActive() {
+    return status == StartupHomingToZero || status == HomingToZero || status == HomingBothDirections;
+  }
+
+  std::string toString() {
+    switch (status) {
+      case Unhomed: return "Unhomed";
+      case StartupHomingToZero: return "StartupHomingToZero";
+      case HomingToZero: return "HomingToZero";
+      case HomingBothDirections: return "HomingBothDirections";
+      case Homed: return "Homed";
+    }
+    return "???";
+  }
+
+ private:
+  Value status = Unhomed;
+};
+
 class RuntimeParameters {
  private:
   double targetIncline = 0.0;
   float simulatedSpeed = 0.0;
   uint8_t FTMSMode     = 0x00;
   int shifterPosition  = 0;
-  bool homed           = false;
   int32_t minStep      = -DEFAULT_STEPPER_TRAVEL;
   int32_t maxStep      = DEFAULT_STEPPER_TRAVEL;
   int minResistance    = -DEFAULT_RESISTANCE_RANGE;
@@ -67,6 +103,7 @@ class RuntimeParameters {
   bool simTargetWatts  = false;
 
  public:
+  HomingStatus homing;
   Measurement watts;
   Measurement pm_batt;
   Measurement hr;
@@ -85,9 +122,6 @@ class RuntimeParameters {
 
   void setShifterPosition(int sp) { shifterPosition = sp; }
   int getShifterPosition() { return shifterPosition; }
-
-  void setHomed(bool hmd) { homed = hmd; }
-  int getHomed() { return homed; }
 
   void setMinStep(int ms) { minStep = ms; }
   int getMinStep() { return minStep; }

@@ -70,7 +70,7 @@ class SS2K {
   static void rxSerial(void);
   void txSerial();
   void pelotonConnected();
-  void goHome(bool bothDirections = false);
+  void doHoming();
 
   SS2K() {
     targetPosition      = 0;

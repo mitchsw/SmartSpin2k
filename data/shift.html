@@ -36,7 +36,26 @@
             <span class="shift-label">SHIFT DOWN</span>
           </button>
         </div>
+
+        <div class="rehome-controls">
+          <button type="button" onclick="showRehomeConfirmation()" class="secondary-button">Rehome Stepper</button>
+        </div>
       </div>
+
+      
+      <div id="rehomeStatus" class="status-message" role="status" aria-live="polite"></div>
+      <dialog id="rehomeDialog" class="modal">
+        <h2>Rehome Stepper Motor?</h2>
+        <p>
+            This will trigger a rehoming calibration. It can be useful to Rehome To Zero if 
+            the stepper motor slips and loses alignment with the bike's resistance knob.
+        </p>
+        <div class="dialog-buttons">
+          <button type="button" onclick="rehome('zero')" class="warning-button">To Zero</button>
+          <button type="button" onclick="rehome('both')" class="secondary-button">Both Directions</button>
+          <button type="button" onclick="hideRehomeConfirmation()" class="secondary-button">Cancel</button>
+        </div>
+      </dialog>
     </main>
   </div>
 
@@ -63,6 +82,32 @@
           console.error('Shift error:', error);
           shiftBox.value = position; // Revert on error
         });
+    }
+
+    const rehomeStatus = document.getElementById('rehomeStatus');
+    const rehomeDialog = document.getElementById('rehomeDialog');
+
+    function showRehomeConfirmation() {
+      rehomeDialog.showModal();
+    }
+    function hideRehomeConfirmation() {
+      rehomeDialog.close();
+    }
+    function rehome(value) {
+      fetch('/home?value=' + value, { method: 'GET' })
+        .then(() => {
+          showRehomeStatus('Rehoming...', 'success');
+          hideRehomeConfirmation();
+        })
+        .catch(error => showSaveStatus('Failed to rehome', 'error'));
+    }
+    function showRehomeStatus(message, type = 'info') {
+      rehomeStatus.textContent = message;
+      rehomeStatus.className = `status-message ${type}`;
+      setTimeout(() => {
+        rehomeStatus.textContent = '';
+        rehomeStatus.className = 'status-message';
+      }, 3000);
     }
 
     function startUpdate() {

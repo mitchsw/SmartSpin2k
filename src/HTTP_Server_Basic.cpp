@@ -287,6 +287,19 @@ void HTTP_Server::start() {
     // BLE Shift notifications are handles by the shift processing in main.cpp
   });
 
+  server.on("/home", []() {
+    String value = server.arg("value");
+    if (value == "both") {
+      server.send(200, "text/plain", "OK");
+      SS2K_LOG(HTTP_SERVER_LOG_TAG, "Home both directions requested");
+      rtConfig->homing.setStatus(HomingStatus::HomingBothDirections);
+    } else {
+      server.send(200, "text/plain", "OK");
+      SS2K_LOG(HTTP_SERVER_LOG_TAG, "Home to zero requested");
+      rtConfig->homing.setStatus(HomingStatus::HomingToZero);
+    }
+  });
+
   server.on("/configJSON", []() {
     String tString;
     tString = userConfig->returnJSON();

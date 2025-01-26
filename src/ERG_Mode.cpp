@@ -37,7 +37,7 @@ void PowerTable::runERG() {
     if (ss2k->isUpdating) {
       return;
     }
-    if (spinBLEServer.spinDownFlag) {
+    if (rtConfig->homing.isActive()) {
       return;
     }
 
@@ -73,8 +73,7 @@ void PowerTable::runERG() {
       powerTable->reset();
       userConfig->setHMin(INT32_MIN);
       userConfig->setHMax(INT32_MIN);
-      spinBLEServer.spinDownFlag = 0;
-      rtConfig->setHomed(false);
+      rtConfig->homing.setStatus(HomingStatus::Unhomed);
       userConfig->saveToLittleFS();
     }
     loopCounter++;
@@ -141,7 +140,7 @@ void PowerTable::setStepperMinMax() {
   int32_t _return = RETURN_ERROR;
 
   // if Homing was preformed, skip estimating min_max
-  if (rtConfig->getHomed()) {
+  if (rtConfig->homing.isHomed()) {
     SS2K_LOG(ERG_MODE_LOG_TAG, "Using detected travel limits during homing");
     return;
   }
@@ -874,7 +873,7 @@ bool PowerTable::_manageSaveState() {
     SS2K_LOG(POWERTABLE_LOG_TAG, "Loading power table version %d, Size %d, Homed %d", version, savedQuality, savedHomed);
 
     // If both current and saved tables were created with homing, we can skip position reliability checks
-    bool canSkipReliabilityChecks = savedHomed && rtConfig->getHomed();
+    bool canSkipReliabilityChecks = savedHomed && rtConfig->homing.isHomed();
 
     if (!canSkipReliabilityChecks) {
       // Initialize a counter for reliable positions
@@ -1001,7 +1000,7 @@ bool PowerTable::_save() {
   file.write((uint8_t*)&size, sizeof(size));
 
   // Write homing state
-  bool isHomed = rtConfig->getHomed();
+  bool isHomed = rtConfig->homing.isHomed();
   file.write((uint8_t*)&isHomed, sizeof(isHomed));
 
   // Write table entries

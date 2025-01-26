@@ -258,6 +258,22 @@ a {
     gap: 0.5rem;
     padding: 1rem;
 }
+.rehome-controls {
+    display: flex;
+    align-items: center;
+    padding-top: 2rem;
+}
+.rehome-controls button {
+    width: 100%;
+    color: rgba(255, 255, 255, 0.8);
+    font-style: italic;
+}
+dialog.modal {
+    background: #103257;
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    color: #ffffff;
+}
 .scan-button:active,
 .shift-button.active,
 .shift-button:active {

@@ -28,7 +28,8 @@ String RuntimeParameters::returnJSON() {
   doc["simCad"]           = this->cad.getSimulate();
   doc["resistance"]       = this->resistance.getValue();
   doc["targetResistance"] = this->resistance.getTarget();
-  doc["homed"]            = this->homed;
+  doc["homed"]            = this->homing.isHomed();
+  doc["homingStatus"]     = this->homing.toString();
   doc["targetIncline"]    = this->targetIncline;
   doc["speed"]            = this->simulatedSpeed;
   doc["simTargetWatts"]   = this->simTargetWatts;
